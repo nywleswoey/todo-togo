@@ -35,13 +35,13 @@ design calls.
 - [Todo data model & states](tickets/1-todo-data-model.md) — single `todos` table; **status enum** (open/done/archived), **date-only** `due_date` resolved at capture time in server timezone, keep `source_transcript`, no priority; sort `due_date ASC NULLS LAST, created_at DESC`.
 - [Transcription path (Web Speech is out)](tickets/5-transcription-path.md) — **audio straight to Gemini Flash** (one combined transcribe+parse call, free tier); `MediaRecorder` upload as multipart → inline base64, ~30s cap. Transcription+interpretation now one call → re-scoped #2.
 - [Gemini intent contract — capture-vs-command + completion-matching](tickets/2-gemini-intent-contract.md) — one JSON: `intent` (capture/command/unknown, **single-intent per tap**) + `transcript` + `captures[]` + `command.candidates[]`. **Matching is LLM-side**: open-todo `{id,title}` list injected into prompt, Gemini returns matched ids (top 3, `[]` if none). **Failure = B→C**: 1 high → confirm sheet, else tap-list, **never auto-apply**. Prompt carries today+tz for absolute due dates.
+- [Capture UX flow — push-to-talk screen + confirm-before-save](tickets/4-capture-ux-flow.md) — **Variant C ("pending review")**: single screen, list + bottom **composer bar**; **tap-to-start/auto-stop**, live waveform + transcript; captures land as **pending drafts** that **self-confirm** (or Keep/Edit/Discard) — fast like auto-save, never invisible. Command completion **gated in all cases** (confirm sheet / tap-list / "not found" — never auto-applied). Failure → toast + Retry. Prototype: `prototypes/4-capture-ux/`.
 
 ## Not yet specified
 
 <!-- in-scope fog; graduates to tickets as the frontier advances -->
 
-- Neon provisioning + environment variable setup (surfaces once the data model is fixed).
-- Final spec assembly — collating all resolved decisions into the single hand-off document (terminal step).
+- **(none)** — every design decision on the map is now locked. Only the terminal handoff remains: [Assemble the build-ready spec (handoff)](tickets/6-assemble-build-ready-spec.md), which collates the decisions and folds in the (mechanical, no-decision) build-setup: env vars `DATABASE_URL`/`GEMINI_API_KEY`/`APP_PIN` + Neon provisioning steps.
 
 ## Out of scope
 
