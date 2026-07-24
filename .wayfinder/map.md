@@ -34,6 +34,7 @@ design calls.
 - [Web Speech API iOS Safari viability](tickets/3-web-speech-ios-viability.md) — Web Speech is **non-functional in standalone iOS PWAs** (WebKit bug 225298, fails silently); transcription must be server-side. Findings: `.wayfinder/research/web-speech-ios.md`.
 - [Todo data model & states](tickets/1-todo-data-model.md) — single `todos` table; **status enum** (open/done/archived), **date-only** `due_date` resolved at capture time in server timezone, keep `source_transcript`, no priority; sort `due_date ASC NULLS LAST, created_at DESC`.
 - [Transcription path (Web Speech is out)](tickets/5-transcription-path.md) — **audio straight to Gemini Flash** (one combined transcribe+parse call, free tier); `MediaRecorder` upload as multipart → inline base64, ~30s cap. Transcription+interpretation now one call → re-scoped #2.
+- [Gemini intent contract — capture-vs-command + completion-matching](tickets/2-gemini-intent-contract.md) — one JSON: `intent` (capture/command/unknown, **single-intent per tap**) + `transcript` + `captures[]` + `command.candidates[]`. **Matching is LLM-side**: open-todo `{id,title}` list injected into prompt, Gemini returns matched ids (top 3, `[]` if none). **Failure = B→C**: 1 high → confirm sheet, else tap-list, **never auto-apply**. Prompt carries today+tz for absolute due dates.
 
 ## Not yet specified
 
