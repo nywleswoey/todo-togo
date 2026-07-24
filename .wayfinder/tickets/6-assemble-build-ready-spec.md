@@ -2,8 +2,8 @@
 id: 6
 title: Assemble the build-ready spec (handoff)
 type: wayfinder:task
-state: open
-assignee:
+state: closed
+assignee: this-session
 blocked_by: [1, 2, 3, 4, 5]
 ---
 
@@ -42,3 +42,21 @@ decision left to make):
 
 Done when `spec.md` exists and is self-sufficient for a build session. This is the
 handoff — the map is decision-complete; do not open new design questions here.
+
+## Resolution
+
+**Spec assembled at `.wayfinder/spec.md`** (labelled `ready-for-agent`). It collates
+all six resolved decisions verbatim with `[ticket #N]` provenance, and folds in the
+mechanical build-setup section (env vars `DATABASE_URL` / `GEMINI_API_KEY` /
+`APP_PIN`, Neon provisioning, draft-persistence tune). Written to the to-spec
+template: problem/solution from the user's view, 29 user stories, implementation
+decisions, testing decisions, out-of-scope, notes.
+
+**Testing seams proposed for the build session to confirm** — kept to one where
+possible: (1) primary = the capture API route with Gemini stubbed (highest seam;
+exercises upload → prompt → intent parse → capture insert → completion match across
+every intent-contract branch); (2) secondary, only if needed = the client
+pending-draft state machine as a plain reducer.
+
+**Map reached its destination** — nothing left to decide or assemble. No new
+tickets; no fog.
