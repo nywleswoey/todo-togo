@@ -18,6 +18,9 @@ import {
   isDraft,
   SELF_CONFIRM_MS,
 } from "@/lib/drafts";
+import { decideCompletionUi, type CompletionDecision } from "@/lib/completion";
+import type { Candidate } from "@/lib/intent";
+import CompletionSheet from "./CompletionSheet";
 import ListeningOverlay from "./ListeningOverlay";
 import Toast, { type ToastAction } from "./Toast";
 import styles from "./TodoScreen.module.css";
@@ -41,6 +44,11 @@ export default function TodoScreen() {
   const [level, setLevel] = useState(0);
   const [toast, setToast] = useState<ToastState | null>(null);
   const recorderRef = useRef<VoiceRecorder | null>(null);
+
+  const [completion, setCompletion] = useState<Exclude<
+    CompletionDecision,
+    { kind: "none" }
+  > | null>(null);
 
   const [draftState, dispatchDraft] = useReducer(
     draftReducer,
@@ -118,13 +126,37 @@ export default function TodoScreen() {
     }
   }
 
-  async function complete(id: string) {
-    setTodos((prev) => prev.filter((t) => t.id !== id));
-    try {
-      await patchTodoApi(id, { status: "done" });
-    } catch {
-      await reload();
-    }
+  /** Complete a todo, optimistically, and offer a one-tap Undo. */
+  function completeWithUndo(todo: Todo) {
+    setTodos((prev) => prev.filter((t) => t.id !== todo.id));
+    patchTodoApi(todo.id, { status: "done" }).catch(() => reload());
+    setToast({
+      message: `Completed “${todo.title}”.`,
+      variant: "info",
+      action: { label: "Undo", onAction: () => undoComplete(todo) },
+    });
+  }
+
+  function undoComplete(todo: Todo) {
+    setTodos((prev) => sortOpen([{ ...todo, status: "open" }, ...prev]));
+    patchTodoApi(todo.id, { status: "open" }).catch(() => reload());
+  }
+
+  /** Resolve a chosen completion candidate to a todo and complete it. */
+  function completeCandidate(candidate: Candidate) {
+    setCompletion(null);
+    const todo =
+      todos.find((t) => t.id === candidate.id) ??
+      ({
+        id: candidate.id,
+        title: candidate.title,
+        status: "open",
+        dueDate: null,
+        sourceTranscript: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      } satisfies Todo);
+    completeWithUndo(todo);
   }
 
   async function saveEdit(id: string, title: string, dueDate: string | null) {
@@ -201,8 +233,12 @@ export default function TodoScreen() {
       dispatchDraft({ type: "captured", ids: res.created.map((t) => t.id) });
       res.created.forEach((t) => scheduleSelfConfirm(t.id));
     } else if (res.intent === "command") {
-      // Gated completion UI arrives in ticket 07.
-      setToast({ message: "Heard a completion command.", variant: "info" });
+      const decision = decideCompletionUi(res.command?.candidates ?? []);
+      if (decision.kind === "none") {
+        setToast({ message: "Couldn't find that todo.", variant: "warning" });
+      } else {
+        setCompletion(decision);
+      }
     } else {
       setToast({
         message: res.transcript
@@ -242,7 +278,7 @@ export default function TodoScreen() {
               <TodoRow
                 key={t.id}
                 todo={t}
-                onComplete={() => complete(t.id)}
+                onComplete={() => completeWithUndo(t)}
                 onEdit={() => setEditingId(t.id)}
               />
             ),
@@ -281,6 +317,14 @@ export default function TodoScreen() {
           phase={recPhase === "thinking" ? "thinking" : "recording"}
           level={level}
           onStop={stopRecording}
+        />
+      )}
+
+      {completion && (
+        <CompletionSheet
+          decision={completion}
+          onPick={completeCandidate}
+          onCancel={() => setCompletion(null)}
         />
       )}
 
