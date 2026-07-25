@@ -2,6 +2,7 @@
  * Client-side API wrapper for the todo endpoints. Client-safe (no server-only).
  */
 import type { Todo } from "./types";
+import type { CaptureResponse } from "./capture-result";
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) {
@@ -49,4 +50,16 @@ export async function deleteTodoApi(id: string): Promise<void> {
   await json<{ ok: true }>(
     await fetch(`/api/todos/${id}`, { method: "DELETE" }),
   );
+}
+
+/** Upload a recorded clip to the capture endpoint and get the applied result. */
+export async function uploadCapture(blob: Blob): Promise<CaptureResponse> {
+  const fd = new FormData();
+  fd.append("audio", blob, "clip");
+  const res = await fetch("/api/capture", { method: "POST", body: fd });
+  if (!res.ok) {
+    // Transcription/interpretation failure — caller shows a Retry toast.
+    throw new Error("capture_failed");
+  }
+  return res.json() as Promise<CaptureResponse>;
 }

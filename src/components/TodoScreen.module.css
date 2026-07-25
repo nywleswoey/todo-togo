@@ -142,3 +142,22 @@
   font-size: 16px;
   background: var(--bg);
 }
+
+.micBtn {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: var(--brand);
+  color: var(--brand-fg);
+  font-size: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.micBtn:active {
+  transform: scale(0.94);
+}
+
