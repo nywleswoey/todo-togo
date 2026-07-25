@@ -349,7 +349,6 @@ function TodoRow({
   onComplete: () => void;
   onEdit: () => void;
 }) {
-  const due = formatDue(todo.dueDate);
   return (
     <div className={styles.row}>
       <button
@@ -359,15 +358,20 @@ function TodoRow({
       />
       <button className={styles.rowBody} onClick={onEdit}>
         <span className={styles.title}>{todo.title}</span>
-        {due && (
-          <span
-            className={`${styles.due} ${due.overdue ? styles.dueOverdue : ""}`}
-          >
-            {due.label}
-          </span>
-        )}
+        <DueBadge todo={todo} />
       </button>
     </div>
+  );
+}
+
+/** The due-date chip, styled overdue when past. Renders nothing when undated. */
+function DueBadge({ todo }: { todo: Todo }) {
+  const due = formatDue(todo.dueDate);
+  if (!due) return null;
+  return (
+    <span className={`${styles.due} ${due.overdue ? styles.dueOverdue : ""}`}>
+      {due.label}
+    </span>
   );
 }
 
@@ -383,20 +387,13 @@ function DraftRow({
   onEdit: () => void;
   onDiscard: () => void;
 }) {
-  const due = formatDue(todo.dueDate);
   return (
     <div className={styles.draft}>
       <div className={styles.draftTop}>
         <span className={styles.draftBadge}>Draft</span>
         <div className={styles.rowBody} style={{ cursor: "default" }}>
           <span className={styles.title}>{todo.title}</span>
-          {due && (
-            <span
-              className={`${styles.due} ${due.overdue ? styles.dueOverdue : ""}`}
-            >
-              {due.label}
-            </span>
-          )}
+          <DueBadge todo={todo} />
         </div>
       </div>
       {todo.sourceTranscript && (

@@ -33,8 +33,6 @@ export const config = {
   get serverTz() {
     return optional("SERVER_TZ", "America/New_York");
   },
-  /** Delay (ms) before an untouched capture draft self-confirms. */
-  get selfConfirmMs() {
-    return Number(optional("SELF_CONFIRM_MS", "4000"));
-  },
+  // The self-confirm delay is a client-side build-tune — see SELF_CONFIRM_MS in
+  // src/lib/drafts.ts (NEXT_PUBLIC_SELF_CONFIRM_MS), not read on the server.
 };
