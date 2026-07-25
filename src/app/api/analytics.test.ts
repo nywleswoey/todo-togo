@@ -201,6 +201,33 @@ test("login ships exactly one event, and a wrong PIN ships none", async () => {
   expect(events.map((e) => e.event)).toEqual(["user_logged_in"]);
 });
 
+test("an uncaught server error ships a $exception via onRequestError", async () => {
+  const { onRequestError } = await import("../../instrumentation");
+
+  const savedRuntime = process.env.NEXT_RUNTIME;
+  process.env.NEXT_RUNTIME = "nodejs";
+  try {
+      await onRequestError!(
+      new Error("boom"),
+      { path: "/api/todos", method: "POST", headers: {} },
+      {
+        routerKind: "App Router",
+        routePath: "/api/todos",
+        routeType: "route",
+        revalidateReason: undefined,
+      },
+    );
+  } finally {
+    if (savedRuntime === undefined) delete process.env.NEXT_RUNTIME;
+    else process.env.NEXT_RUNTIME = savedRuntime;
+  }
+
+  const [event] = await settle(1);
+  expect(event.event).toBe("$exception");
+  expect(event.distinctId).toBe("togo_user");
+  expect(event.properties).toMatchObject({ path: "/api/todos", method: "POST" });
+});
+
 test("with no project token configured, nothing is sent and routes still work", async () => {
   const saved = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   delete process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;

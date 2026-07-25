@@ -53,3 +53,28 @@ export function captureServerEvent(
     void send();
   }
 }
+
+/**
+ * Report a server-side exception to PostHog's error tracking for the single
+ * Togo user.
+ *
+ * Awaitable, unlike {@link captureServerEvent}: the caller decides whether to
+ * block. `onRequestError` (see `src/instrumentation.ts`) awaits it so the flush
+ * lands before a serverless instance is frozen or reused; route `catch` blocks
+ * can defer it with `after` instead. Either way it is best-effort — a failing
+ * PostHog never turns into a thrown error.
+ */
+export async function captureServerException(
+  error: unknown,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  const client = createClient();
+  if (!client) return;
+
+  try {
+    client.captureException(error, POSTHOG_DISTINCT_ID, properties);
+    await client.shutdown();
+  } catch {
+    // Reporting an error must never raise a second one.
+  }
+}

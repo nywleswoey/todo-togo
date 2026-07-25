@@ -43,7 +43,9 @@ export async function POST(req: Request) {
       ctx: { today: todayInTz(tz), timezone: tz, openTodos },
     });
   } catch (err) {
-    // Transcription/interpretation failed — client shows a Retry toast.
+    // Transcription/interpretation failed — client shows a Retry toast. This is
+    // a handled operational outcome, not an exception: it stays out of PostHog
+    // error tracking by design (see analytics.test.ts).
     return NextResponse.json(
       { error: "transcription_failed", message: (err as Error).message },
       { status: 502 },
