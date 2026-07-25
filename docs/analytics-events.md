@@ -58,7 +58,11 @@ PostHog error tracking as `$exception` via Next.js's `onRequestError` hook in
 (`src/lib/posthog-server.ts`). Properties: `path`, `method`, `router_kind`,
 `route_type`. Handled operational failures — e.g. a Gemini transcription error
 turned into a 502 by `POST /api/capture` — are deliberately *not* reported;
-error tracking is for what escapes, not for expected outcomes.
+error tracking is for what escapes, not for expected outcomes. That route
+`console.error`s the underlying failure instead, so it is diagnosable from the
+Vercel function logs; the browser side of the same 502 does reach error tracking,
+because `uploadCapture` carries the server's `message` into the error that the
+upload path passes to `captureException`.
 
 Middleware (`src/middleware.ts`) runs on the Edge runtime, which `onRequestError`
 does not cover (it only reports from Node) and where `posthog-node` cannot run.
