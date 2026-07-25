@@ -60,6 +60,12 @@ PostHog error tracking as `$exception` via Next.js's `onRequestError` hook in
 turned into a 502 by `POST /api/capture` — are deliberately *not* reported;
 error tracking is for what escapes, not for expected outcomes.
 
+Middleware (`src/middleware.ts`) runs on the Edge runtime, which `onRequestError`
+does not cover (it only reports from Node) and where `posthog-node` cannot run.
+It reports its own escaping errors as `$exception` via `captureEdgeException`
+(`src/lib/posthog-edge.ts`), which posts to PostHog's capture endpoint with
+`fetch`. Properties: `path`, `method`.
+
 ---
 
 `voice_capture_processed` is the server's view of every capture request;

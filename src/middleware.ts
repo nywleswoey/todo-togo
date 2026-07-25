@@ -1,13 +1,30 @@
 import { NextRequest, NextResponse } from "next/server";
 import { SESSION_COOKIE, isValidSession } from "@/lib/session";
+import { captureEdgeException } from "@/lib/posthog-edge";
 
 /**
  * Gate every app route behind the PIN session. The matcher already excludes the
  * login page, the auth endpoint, and static assets; the /ingest analytics proxy
  * is exempted below. Everything else needs a valid session cookie: API paths get
  * a 401; page paths redirect to /login.
+ *
+ * Middleware runs on Edge, out of `onRequestError`'s reach (that hook only
+ * reports from Node — see `src/instrumentation.ts`), so this reports its own
+ * escaping errors via the Edge-safe path before rethrowing.
  */
 export async function middleware(req: NextRequest) {
+  try {
+    return await gate(req);
+  } catch (err) {
+    await captureEdgeException(err, {
+      path: req.nextUrl.pathname,
+      method: req.method,
+    });
+    throw err;
+  }
+}
+
+async function gate(req: NextRequest): Promise<NextResponse> {
   // The PostHog reverse proxy is not part of the app: it must stay reachable
   // before a session exists (login-page events), and the session cookie must
   // never travel to the third-party host the /ingest rewrites point at.
