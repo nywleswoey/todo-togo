@@ -9,6 +9,17 @@ export function parseDateOnly(s: string): Date {
   return new Date(y, m - 1, d, 12, 0, 0, 0);
 }
 
+/** Today's `YYYY-MM-DD` in a specific IANA timezone (server-side date resolution). */
+export function todayInTz(tz: string): string {
+  // en-CA formats as YYYY-MM-DD.
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: tz,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date());
+}
+
 /** Today's `YYYY-MM-DD` in the browser's local timezone. */
 export function todayLocal(): string {
   const now = new Date();
