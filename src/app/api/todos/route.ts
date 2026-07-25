@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { createTodo, listOpen } from "@/lib/todos";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,5 +23,8 @@ export async function POST(req: Request) {
     typeof body?.dueDate === "string" && body.dueDate ? body.dueDate : null;
   const id = typeof body?.id === "string" ? body.id : undefined;
   const todo = await createTodo(getDb(), { id, title, dueDate });
+
+  captureServerEvent("todo_created", { method: "text", has_due_date: !!dueDate });
+
   return NextResponse.json({ todo }, { status: 201 });
 }

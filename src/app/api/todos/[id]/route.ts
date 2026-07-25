@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { deleteTodo, getTodo, setStatus, updateTodo } from "@/lib/todos";
 import type { TodoStatus } from "@/lib/types";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -41,6 +42,12 @@ export async function PATCH(
       return NextResponse.json({ error: "invalid status" }, { status: 400 });
     }
     todo = await setStatus(db, id, body.status);
+    if (todo) {
+      captureServerEvent("todo_status_changed", {
+        status: body.status,
+        has_due_date: !!todo.dueDate,
+      });
+    }
   } else {
     todo = await getTodo(db, id);
   }
@@ -57,5 +64,8 @@ export async function DELETE(
   const { id } = await params;
   const ok = await deleteTodo(getDb(), id);
   if (!ok) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  captureServerEvent("todo_deleted");
+
   return NextResponse.json({ ok: true });
 }

@@ -5,6 +5,7 @@ import { todayInTz } from "@/lib/date";
 import { interpretAudio } from "@/lib/gemini";
 import { processCapture } from "@/lib/capture";
 import { listOpen } from "@/lib/todos";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -50,5 +51,11 @@ export async function POST(req: Request) {
   }
 
   const result = await processCapture(db, intent);
+
+  captureServerEvent("voice_capture_processed", {
+    intent: result.intent,
+    todos_created: result.intent === "capture" ? result.created?.length ?? 0 : 0,
+  });
+
   return NextResponse.json(result);
 }
