@@ -16,9 +16,11 @@ export interface InterpretInput {
   ctx: PromptContext;
 }
 
-// Gemini 2.5 Flash — multimodal (audio in), on the current free tier. Requires
-// an API key from a project WITHOUT billing enabled; enabling billing on a
-// project zeroes its free-tier quota (429 RESOURCE_EXHAUSTED, limit: 0).
+// Gemini 2.5 Flash — multimodal (audio in), on the current free tier. The 429
+// RESOURCE_EXHAUSTED (limit: 0) that broke capture was a quota problem on the
+// key's Google project, not the model: it took a key from a project without
+// billing to get free-tier quota back. 2.5 is a thinking model, so the call
+// below disables thinking to keep 2.0-flash's latency on the voice path.
 const MODEL = "gemini-2.5-flash";
 
 const INTENT_SCHEMA = {
@@ -78,6 +80,7 @@ export async function interpretAudio(
       },
     ],
     config: {
+      thinkingConfig: { thinkingBudget: 0 },
       responseMimeType: "application/json",
       responseSchema: INTENT_SCHEMA,
     },
