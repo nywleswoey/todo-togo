@@ -4,7 +4,7 @@ const nextConfig: NextConfig = {
   // API routes handle audio uploads and the Gemini SDK — force the Node runtime.
   serverExternalPackages: ["@google/genai", "@neondatabase/serverless"],
   // Reverse-proxy PostHog under our own origin so ad/tracker blockers don't
-  // drop analytics. The client always talks to /ingest (see src/app/providers.tsx);
+  // drop analytics. The client always talks to /ingest (see src/lib/posthog-client.ts);
   // the US region is fixed here, so NEXT_PUBLIC_POSTHOG_HOST only steers the
   // server-side client. PostHog's ingest paths are trailing-slash sensitive,
   // hence skipTrailingSlashRedirect below.

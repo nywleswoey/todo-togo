@@ -3,6 +3,13 @@ import { PostHog } from "posthog-node";
 
 const POSTHOG_DISTINCT_ID = "togo_user";
 
+/**
+ * How long a flush may hold up its caller. posthog-node defaults to 30s, which
+ * an awaited flush would spend blocking the request that failed whenever
+ * PostHog is unreachable.
+ */
+const FLUSH_TIMEOUT_MS = 2_000;
+
 function createClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   if (!token) {
@@ -51,5 +58,30 @@ export function captureServerEvent(
     after(send);
   } catch {
     void send();
+  }
+}
+
+/**
+ * Report a server-side exception to PostHog's error tracking for the single
+ * Togo user.
+ *
+ * Awaitable, unlike {@link captureServerEvent}: the caller decides whether to
+ * block. `onRequestError` (see `src/instrumentation.ts`) awaits it so the flush
+ * lands before a serverless instance is frozen or reused; route `catch` blocks
+ * can defer it with `after` instead. Either way it is best-effort — a failing
+ * PostHog never turns into a thrown error.
+ */
+export async function captureServerException(
+  error: unknown,
+  properties?: Record<string, unknown>,
+): Promise<void> {
+  const client = createClient();
+  if (!client) return;
+
+  try {
+    client.captureException(error, POSTHOG_DISTINCT_ID, properties);
+    await client.shutdown(FLUSH_TIMEOUT_MS);
+  } catch {
+    // Reporting an error must never raise a second one.
   }
 }
