@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { deleteTodo, getTodo, setStatus, updateTodo } from "@/lib/todos";
 import type { TodoStatus } from "@/lib/types";
-import { getPostHogClient, POSTHOG_DISTINCT_ID } from "@/lib/posthog-server";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -43,13 +43,10 @@ export async function PATCH(
     }
     todo = await setStatus(db, id, body.status);
     if (todo) {
-      const posthog = getPostHogClient();
-      posthog.capture({
-        distinctId: POSTHOG_DISTINCT_ID,
-        event: "todo_status_changed",
-        properties: { status: body.status },
+      captureServerEvent("todo_status_changed", {
+        status: body.status,
+        has_due_date: !!todo.dueDate,
       });
-      await posthog.shutdown();
     }
   } else {
     todo = await getTodo(db, id);
@@ -68,12 +65,7 @@ export async function DELETE(
   const ok = await deleteTodo(getDb(), id);
   if (!ok) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const posthog = getPostHogClient();
-  posthog.capture({
-    distinctId: POSTHOG_DISTINCT_ID,
-    event: "todo_deleted",
-  });
-  await posthog.shutdown();
+  captureServerEvent("todo_deleted");
 
   return NextResponse.json({ ok: true });
 }

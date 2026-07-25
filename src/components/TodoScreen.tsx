@@ -124,7 +124,6 @@ export default function TodoScreen() {
     try {
       const todo = await createTodoApi({ title });
       setTodos((prev) => sortOpen([todo, ...prev]));
-      posthog.capture("todo_created", { method: "text" });
     } catch (err) {
       posthog.captureException(err);
       await reload();
@@ -135,7 +134,6 @@ export default function TodoScreen() {
   function completeWithUndo(todo: Todo) {
     setTodos((prev) => prev.filter((t) => t.id !== todo.id));
     patchTodoApi(todo.id, { status: "done" }).catch(() => reload());
-    posthog.capture("todo_completed", { has_due_date: !!todo.dueDate });
     setToast({
       message: `Completed “${todo.title}”.`,
       variant: "info",
@@ -146,7 +144,6 @@ export default function TodoScreen() {
   function undoComplete(todo: Todo) {
     setTodos((prev) => sortOpen([{ ...todo, status: "open" }, ...prev]));
     patchTodoApi(todo.id, { status: "open" }).catch(() => reload());
-    posthog.capture("todo_completion_undone");
   }
 
   /** Resolve a chosen completion candidate to a todo and complete it. */
@@ -188,7 +185,6 @@ export default function TodoScreen() {
     setTodos((prev) => prev.filter((t) => t.id !== id));
     try {
       await deleteTodoApi(id);
-      posthog.capture("todo_deleted");
     } catch (err) {
       posthog.captureException(err);
       await reload();
@@ -268,7 +264,7 @@ export default function TodoScreen() {
       posthog.capture("voice_capture_failed", { reason: "no_intent" });
       setToast({
         message: res.transcript
-          ? `Heard "${res.transcript}" — no task caught.`
+          ? `Heard “${res.transcript}” — no task caught.`
           : "Didn't catch that.",
         variant: "warning",
         action: { label: "Retry", onAction: startRecording },

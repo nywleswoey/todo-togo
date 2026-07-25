@@ -5,7 +5,7 @@ import { todayInTz } from "@/lib/date";
 import { interpretAudio } from "@/lib/gemini";
 import { processCapture } from "@/lib/capture";
 import { listOpen } from "@/lib/todos";
-import { getPostHogClient, POSTHOG_DISTINCT_ID } from "@/lib/posthog-server";
+import { captureServerEvent } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -52,16 +52,10 @@ export async function POST(req: Request) {
 
   const result = await processCapture(db, intent);
 
-  const posthog = getPostHogClient();
-  posthog.capture({
-    distinctId: POSTHOG_DISTINCT_ID,
-    event: "voice_capture_processed",
-    properties: {
-      intent: result.intent,
-      todos_created: result.intent === "capture" ? result.created?.length ?? 0 : 0,
-    },
+  captureServerEvent("voice_capture_processed", {
+    intent: result.intent,
+    todos_created: result.intent === "capture" ? result.created?.length ?? 0 : 0,
   });
-  await posthog.shutdown();
 
   return NextResponse.json(result);
 }

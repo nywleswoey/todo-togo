@@ -7,6 +7,15 @@ import { SESSION_COOKIE, isValidSession } from "@/lib/session";
  * valid session cookie. API paths get a 401; page paths redirect to /login.
  */
 export async function middleware(req: NextRequest) {
+  // The PostHog reverse proxy is not part of the app: it must stay reachable
+  // before a session exists (login-page events), and the session cookie must
+  // never travel to the third-party host the /ingest rewrites point at.
+  if (req.nextUrl.pathname.startsWith("/ingest")) {
+    const headers = new Headers(req.headers);
+    headers.delete("cookie");
+    return NextResponse.next({ request: { headers } });
+  }
+
   const token = req.cookies.get(SESSION_COOKIE)?.value;
   const ok = await isValidSession(token, process.env.APP_PIN);
   if (ok) return NextResponse.next();
