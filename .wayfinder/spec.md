@@ -157,7 +157,7 @@ Chosen from a 3-variant prototype (`.wayfinder/prototypes/4-capture-ux/`).
 
 ### Build setup [folded in from map fog — mechanical, no decision]
 
-- **Required env vars**: `DATABASE_URL` (Neon pooled connection string), `GEMINI_API_KEY`, `APP_PIN`.
+- **Env vars**: see `.env.example` — it is the authoritative list, with what each one does.
 - **Neon provisioning**: create a Neon project, copy the pooled connection string into `DATABASE_URL`, run the `todos` migration.
 - **Draft persistence tune** [from ticket #4]: persist un-confirmed capture drafts as `status = 'open'` when the app backgrounds — don't lose a capture to a phone lock. Exact self-confirm delay (~4s in the prototype) is a build-tune parameter.
 

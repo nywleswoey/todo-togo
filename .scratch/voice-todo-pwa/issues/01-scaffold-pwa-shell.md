@@ -8,7 +8,7 @@
 
 - [ ] Next.js app builds and deploys to Vercel from `main`.
 - [ ] Neon Postgres provisioned; `DATABASE_URL` (pooled connection string) wired; a startup DB reachability check passes on the deployed app.
-- [ ] Env vars documented and read from config: `DATABASE_URL`, `GEMINI_API_KEY`, `APP_PIN` (placeholders acceptable for the last two at this stage).
+- [ ] Env vars documented in `.env.example` (the authoritative list) and read from config; placeholders acceptable for the non-DB ones at this stage.
 - [ ] Server timezone is a single hardcoded/config value (single-user), available to server code.
 - [ ] Web app manifest + Apple touch/meta tags present so iOS "Add to Home Screen" installs it and it launches **standalone** full-screen (no browser chrome).
 - [ ] Verified on an actual iPhone: add-to-home-screen → launches full-screen.

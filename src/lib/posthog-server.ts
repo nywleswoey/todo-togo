@@ -27,6 +27,9 @@ function createClient(): PostHog | null {
  * Best-effort by contract: the send is deferred until after the response has
  * been handed back, and a slow or failing PostHog can neither delay nor fail
  * the request that triggered it.
+ *
+ * Event names and properties are a dashboard contract — see
+ * `docs/analytics-events.md` before renaming one.
  */
 export function captureServerEvent(
   event: string,
