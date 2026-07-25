@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import type { Todo } from "@/lib/types";
 import type { CaptureResponse } from "@/lib/capture-result";
 import { formatDue } from "@/lib/date";
@@ -12,6 +12,12 @@ import {
   uploadCapture,
 } from "@/lib/api";
 import { VoiceRecorder } from "@/lib/recorder";
+import {
+  draftReducer,
+  initialDraftState,
+  isDraft,
+  SELF_CONFIRM_MS,
+} from "@/lib/drafts";
 import ListeningOverlay from "./ListeningOverlay";
 import Toast, { type ToastAction } from "./Toast";
 import styles from "./TodoScreen.module.css";
@@ -36,12 +42,65 @@ export default function TodoScreen() {
   const [toast, setToast] = useState<ToastState | null>(null);
   const recorderRef = useRef<VoiceRecorder | null>(null);
 
+  const [draftState, dispatchDraft] = useReducer(
+    draftReducer,
+    initialDraftState,
+  );
+  const timersRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map(),
+  );
+
   useEffect(() => {
     fetchTodos()
       .then(setTodos)
       .catch(() => setTodos([]))
       .finally(() => setLoading(false));
   }, []);
+
+  // Backgrounding settles every pending draft — they're already persisted as
+  // open todos, so a phone lock never loses a capture. Also clear timers on unmount.
+  useEffect(() => {
+    const timers = timersRef.current;
+    function onVisibility() {
+      if (document.visibilityState === "hidden") {
+        timers.forEach(clearTimeout);
+        timers.clear();
+        dispatchDraft({ type: "settleAll" });
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      timers.forEach(clearTimeout);
+    };
+  }, []);
+
+  function clearTimer(id: string) {
+    const t = timersRef.current.get(id);
+    if (t) {
+      clearTimeout(t);
+      timersRef.current.delete(id);
+    }
+  }
+
+  function scheduleSelfConfirm(id: string) {
+    const t = setTimeout(() => {
+      timersRef.current.delete(id);
+      dispatchDraft({ type: "confirm", id });
+    }, SELF_CONFIRM_MS);
+    timersRef.current.set(id, t);
+  }
+
+  function keepDraft(id: string) {
+    clearTimer(id);
+    dispatchDraft({ type: "confirm", id });
+  }
+
+  function discardDraft(id: string) {
+    clearTimer(id);
+    dispatchDraft({ type: "discard", id });
+    void remove(id);
+  }
 
   async function reload() {
     setTodos(await fetchTodos());
@@ -70,6 +129,9 @@ export default function TodoScreen() {
 
   async function saveEdit(id: string, title: string, dueDate: string | null) {
     setEditingId(null);
+    // Editing a draft is an explicit touch — settle it.
+    clearTimer(id);
+    dispatchDraft({ type: "confirm", id });
     setTodos((prev) =>
       sortOpen(prev.map((t) => (t.id === id ? { ...t, title, dueDate } : t))),
     );
@@ -136,6 +198,8 @@ export default function TodoScreen() {
     setRecPhase("idle");
     if (res.intent === "capture") {
       setTodos((prev) => sortOpen([...res.created, ...prev]));
+      dispatchDraft({ type: "captured", ids: res.created.map((t) => t.id) });
+      res.created.forEach((t) => scheduleSelfConfirm(t.id));
     } else if (res.intent === "command") {
       // Gated completion UI arrives in ticket 07.
       setToast({ message: "Heard a completion command.", variant: "info" });
@@ -165,6 +229,14 @@ export default function TodoScreen() {
                 onSave={saveEdit}
                 onDelete={remove}
                 onCancel={() => setEditingId(null)}
+              />
+            ) : isDraft(draftState, t.id) ? (
+              <DraftRow
+                key={t.id}
+                todo={t}
+                onKeep={() => keepDraft(t.id)}
+                onEdit={() => setEditingId(t.id)}
+                onDiscard={() => discardDraft(t.id)}
               />
             ) : (
               <TodoRow
@@ -255,6 +327,52 @@ function TodoRow({
   );
 }
 
+/** A freshly-captured todo shown as a pending draft until it settles. */
+function DraftRow({
+  todo,
+  onKeep,
+  onEdit,
+  onDiscard,
+}: {
+  todo: Todo;
+  onKeep: () => void;
+  onEdit: () => void;
+  onDiscard: () => void;
+}) {
+  const due = formatDue(todo.dueDate);
+  return (
+    <div className={styles.draft}>
+      <div className={styles.draftTop}>
+        <span className={styles.draftBadge}>Draft</span>
+        <div className={styles.rowBody} style={{ cursor: "default" }}>
+          <span className={styles.title}>{todo.title}</span>
+          {due && (
+            <span
+              className={`${styles.due} ${due.overdue ? styles.dueOverdue : ""}`}
+            >
+              {due.label}
+            </span>
+          )}
+        </div>
+      </div>
+      {todo.sourceTranscript && (
+        <p className={styles.transcriptNote}>“{todo.sourceTranscript}”</p>
+      )}
+      <div className={styles.draftActions}>
+        <button className={styles.btnPrimary} onClick={onKeep}>
+          Keep
+        </button>
+        <button className={styles.btn} onClick={onEdit}>
+          Edit
+        </button>
+        <button className={styles.btnDanger} onClick={onDiscard}>
+          Discard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function EditRow({
   todo,
   onSave,
@@ -270,6 +388,9 @@ function EditRow({
   const [dueDate, setDueDate] = useState(todo.dueDate ?? "");
   return (
     <div className={styles.edit}>
+      {todo.sourceTranscript && (
+        <p className={styles.transcriptNote}>Heard: “{todo.sourceTranscript}”</p>
+      )}
       <input
         className={styles.input}
         value={title}
