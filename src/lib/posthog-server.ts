@@ -3,6 +3,13 @@ import { PostHog } from "posthog-node";
 
 const POSTHOG_DISTINCT_ID = "togo_user";
 
+/**
+ * How long a flush may hold up its caller. posthog-node defaults to 30s, which
+ * an awaited flush would spend blocking the request that failed whenever
+ * PostHog is unreachable.
+ */
+const FLUSH_TIMEOUT_MS = 2_000;
+
 function createClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   if (!token) {
@@ -73,7 +80,7 @@ export async function captureServerException(
 
   try {
     client.captureException(error, POSTHOG_DISTINCT_ID, properties);
-    await client.shutdown();
+    await client.shutdown(FLUSH_TIMEOUT_MS);
   } catch {
     // Reporting an error must never raise a second one.
   }

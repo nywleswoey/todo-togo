@@ -207,7 +207,7 @@ test("an uncaught server error ships a $exception via onRequestError", async () 
   const savedRuntime = process.env.NEXT_RUNTIME;
   process.env.NEXT_RUNTIME = "nodejs";
   try {
-      await onRequestError!(
+    await onRequestError!(
       new Error("boom"),
       { path: "/api/todos", method: "POST", headers: {} },
       {

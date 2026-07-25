@@ -15,7 +15,9 @@ distinct id `togo_user`.
 
 ## Client events
 
-Sent from the browser with `posthog-js`, initialized in `src/app/providers.tsx`.
+Sent from the browser with `posthog-js`, initialized in `src/lib/posthog-client.ts`
+(from `src/app/providers.tsx`, or from the root error boundary when the layout
+that mounts the provider is the thing that failed).
 Pageviews and `$exception` are captured automatically (`defaults: "2026-01-30"`,
 `capture_exceptions: true`); `posthog.captureException` is also called
 explicitly on the fetch/recorder failure paths in `src/components/TodoScreen.tsx`

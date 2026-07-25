@@ -1,5 +1,4 @@
 import type { Instrumentation } from "next";
-import { captureServerException } from "@/lib/posthog-server";
 
 /**
  * Next.js server instrumentation.
@@ -11,7 +10,10 @@ import { captureServerException } from "@/lib/posthog-server";
  * (e.g. the Gemini failure in `POST /api/capture`) report explicitly instead;
  * this only sees what escapes.
  *
- * The Edge runtime has no PostHog node client, so only report from Node.
+ * The Edge runtime has no PostHog node client, so only report from Node. This
+ * file is bundled for both runtimes (the PIN middleware runs on Edge), so the
+ * node client is imported lazily — a static import would pull it into the Edge
+ * bundle that the runtime check below never lets it run in.
  */
 export const onRequestError: Instrumentation.onRequestError = async (
   error,
@@ -20,11 +22,13 @@ export const onRequestError: Instrumentation.onRequestError = async (
 ) => {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  const { captureServerException } = await import("@/lib/posthog-server");
+
   await captureServerException(error, {
     path: request.path,
     method: request.method,
-    // e.g. "render" | "action" — narrows where the error escaped.
     router_kind: context.routerKind,
+    // e.g. "render" | "action" — narrows where the error escaped.
     route_type: context.routeType,
   });
 };

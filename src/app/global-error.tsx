@@ -2,12 +2,16 @@
 
 import posthog from "posthog-js";
 import { useEffect } from "react";
+import { initPostHogClient } from "@/lib/posthog-client";
 
 /**
  * Root error boundary. Next.js renders this when an error escapes the root
  * layout — the one place `capture_exceptions` (see `src/app/providers.tsx`)
  * cannot reach, because the PostHog provider lives inside the layout that has
  * already unmounted. Report it explicitly, then show a minimal recovery screen.
+ *
+ * The provider never ran when the layout failed on a fresh load, so initialise
+ * the client here too — capturing on an uninitialised one silently drops it.
  */
 export default function GlobalError({
   error,
@@ -17,6 +21,7 @@ export default function GlobalError({
   reset: () => void;
 }) {
   useEffect(() => {
+    initPostHogClient();
     posthog.captureException(error);
   }, [error]);
 
