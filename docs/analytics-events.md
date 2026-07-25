@@ -19,7 +19,8 @@ Sent from the browser with `posthog-js`, initialized in `src/app/providers.tsx`.
 Pageviews and `$exception` are captured automatically (`defaults: "2026-01-30"`,
 `capture_exceptions: true`); `posthog.captureException` is also called
 explicitly on the fetch/recorder failure paths in `src/components/TodoScreen.tsx`
-and `src/app/login/page.tsx`.
+and `src/app/login/page.tsx`, and in `src/app/global-error.tsx` for errors that
+escape the root layout (which `capture_exceptions` can't reach).
 
 | Event | Properties | Fired when |
 | --- | --- | --- |
@@ -46,6 +47,18 @@ which defers the send until after the response (see the doc comment there).
 | `todo_status_changed` | `status` (`open` \| `done` \| `archived`), `has_due_date` (bool) | `PATCH /api/todos/:id` |
 | `todo_deleted` | — | `DELETE /api/todos/:id` |
 | `voice_capture_processed` | `intent` (`capture` \| `command` \| `unknown`), `todos_created` (number) | `POST /api/capture` |
+
+### Server error tracking
+
+Uncaught server errors (route handlers, Server Components) are reported to
+PostHog error tracking as `$exception` via Next.js's `onRequestError` hook in
+`src/instrumentation.ts`, which calls `captureServerException`
+(`src/lib/posthog-server.ts`). Properties: `path`, `method`, `router_kind`,
+`route_type`. Handled operational failures — e.g. a Gemini transcription error
+turned into a 502 by `POST /api/capture` — are deliberately *not* reported;
+error tracking is for what escapes, not for expected outcomes.
+
+---
 
 `voice_capture_processed` is the server's view of every capture request;
 `voice_capture_succeeded` / `voice_capture_failed` are the client's view of what
