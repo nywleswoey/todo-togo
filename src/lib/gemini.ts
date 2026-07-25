@@ -16,7 +16,10 @@ export interface InterpretInput {
   ctx: PromptContext;
 }
 
-const MODEL = "gemini-2.0-flash";
+// Gemini 2.5 Flash — multimodal (audio in), on the current free tier. Requires
+// an API key from a project WITHOUT billing enabled; enabling billing on a
+// project zeroes its free-tier quota (429 RESOURCE_EXHAUSTED, limit: 0).
+const MODEL = "gemini-2.5-flash";
 
 const INTENT_SCHEMA = {
   type: Type.OBJECT,
