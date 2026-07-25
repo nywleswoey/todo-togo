@@ -14,7 +14,9 @@ import type { Instrumentation } from "next";
  * The Edge runtime has no PostHog node client, so only report from Node. This
  * file is bundled for both runtimes (the PIN middleware runs on Edge), so the
  * node client is imported lazily — a static import would pull it into the Edge
- * bundle that the runtime check below never lets it run in.
+ * bundle that the runtime check below never lets it run in. What this leaves
+ * uncovered — errors escaping the Edge middleware — is reported by
+ * `captureEdgeException` (`src/lib/posthog-edge.ts`) instead.
  */
 export const onRequestError: Instrumentation.onRequestError = async (
   error,
