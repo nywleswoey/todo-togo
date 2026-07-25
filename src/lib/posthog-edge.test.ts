@@ -17,6 +17,7 @@ interface Captured {
 
 const captured: Captured[] = [];
 let sink: Server;
+let sinkStatus = 200;
 
 const TOKEN = "phc_edge_token";
 
@@ -26,7 +27,7 @@ beforeAll(async () => {
     req.on("data", (c: Buffer) => chunks.push(c));
     req.on("end", () => {
       captured.push({ path: req.url ?? "", body: JSON.parse(Buffer.concat(chunks).toString()) });
-      res.writeHead(200, { "content-type": "application/json" });
+      res.writeHead(sinkStatus, { "content-type": "application/json" });
       res.end("{}");
     });
   });
@@ -43,6 +44,7 @@ afterAll(async () => {
 
 beforeEach(() => {
   captured.length = 0;
+  sinkStatus = 200;
   process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN = TOKEN;
 });
 afterEach(() => {
@@ -73,6 +75,12 @@ test("with no project token, nothing is sent", async () => {
   delete process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
   await captureEdgeException(new Error("nope"));
   expect(captured).toEqual([]);
+});
+
+test("a rejected capture is swallowed, never rethrown", async () => {
+  sinkStatus = 400;
+  await expect(captureEdgeException(new Error("boom"))).resolves.toBeUndefined();
+  expect(captured).toHaveLength(1);
 });
 
 test("a failing PostHog is swallowed, never rethrown", async () => {

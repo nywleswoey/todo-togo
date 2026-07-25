@@ -24,14 +24,22 @@ export async function captureEdgeException(
   properties?: Record<string, unknown>,
 ): Promise<void> {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
-  if (!token) return;
+  if (!token) {
+    if (process.env.NODE_ENV === "development") {
+      console.error(
+        "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN variable required by PostHog is missing or un-configured, " +
+          "this causes events to be silently missed. This error stops appearing once NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN is configured",
+      );
+    }
+    return;
+  }
 
   const host =
     process.env.NEXT_PUBLIC_POSTHOG_HOST ?? "https://us.i.posthog.com";
   const err = error instanceof Error ? error : new Error(String(error));
 
   try {
-    await fetch(`${host}/capture/`, {
+    const res = await fetch(`${host}/capture/`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       signal: AbortSignal.timeout(CAPTURE_TIMEOUT_MS),
@@ -53,7 +61,17 @@ export async function captureEdgeException(
         },
       }),
     });
-  } catch {
+
+    if (!res.ok && process.env.NODE_ENV === "development") {
+      console.error(
+        `PostHog rejected the Edge $exception capture with HTTP ${res.status}, ` +
+          "this causes events to be silently missed.",
+      );
+    }
+  } catch (captureError) {
     // Reporting an error must never raise a second one.
+    if (process.env.NODE_ENV === "development") {
+      console.error("PostHog Edge $exception capture failed", captureError);
+    }
   }
 }
