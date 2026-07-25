@@ -45,7 +45,10 @@ export async function POST(req: Request) {
   } catch (err) {
     // Transcription/interpretation failed — client shows a Retry toast. This is
     // a handled operational outcome, not an exception: it stays out of PostHog
-    // error tracking by design (see analytics.test.ts).
+    // error tracking by design (see analytics.test.ts). We still log it so the
+    // underlying Gemini failure (bad key, quota, model) is visible in the
+    // Vercel function logs — the JSON `message` alone never reaches them.
+    console.error("[capture] interpretAudio failed:", err);
     return NextResponse.json(
       { error: "transcription_failed", message: (err as Error).message },
       { status: 502 },
