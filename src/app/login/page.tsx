@@ -23,7 +23,6 @@ export default function LoginPage() {
       });
       if (res.ok) {
         posthog.identify("togo_user");
-        posthog.capture("login_succeeded");
         router.replace("/");
         router.refresh();
       } else {

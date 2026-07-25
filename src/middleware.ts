@@ -10,7 +10,8 @@ export async function middleware(req: NextRequest) {
   // The PostHog reverse proxy is not part of the app: it must stay reachable
   // before a session exists (login-page events), and the session cookie must
   // never travel to the third-party host the /ingest rewrites point at.
-  if (req.nextUrl.pathname.startsWith("/ingest")) {
+  const { pathname } = req.nextUrl;
+  if (pathname === "/ingest" || pathname.startsWith("/ingest/")) {
     const headers = new Headers(req.headers);
     headers.delete("cookie");
     return NextResponse.next({ request: { headers } });
@@ -20,7 +21,7 @@ export async function middleware(req: NextRequest) {
   const ok = await isValidSession(token, process.env.APP_PIN);
   if (ok) return NextResponse.next();
 
-  if (req.nextUrl.pathname.startsWith("/api/")) {
+  if (pathname.startsWith("/api/")) {
     return NextResponse.json({ error: "Locked" }, { status: 401 });
   }
   const url = req.nextUrl.clone();

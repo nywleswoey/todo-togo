@@ -1,7 +1,7 @@
 import { after } from "next/server";
 import { PostHog } from "posthog-node";
 
-export const POSTHOG_DISTINCT_ID = "togo_user";
+const POSTHOG_DISTINCT_ID = "togo_user";
 
 function createClient(): PostHog | null {
   const token = process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN;
