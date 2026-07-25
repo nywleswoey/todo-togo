@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyPin } from "@/lib/auth";
 import { config } from "@/lib/config";
 import { SESSION_COOKIE, sessionTokenFor } from "@/lib/session";
+import { getPostHogClient, POSTHOG_DISTINCT_ID } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -23,6 +24,14 @@ export async function POST(req: Request) {
     path: "/",
     maxAge: ONE_YEAR,
   });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: POSTHOG_DISTINCT_ID,
+    event: "user_logged_in",
+  });
+  await posthog.shutdown();
+
   return res;
 }
 

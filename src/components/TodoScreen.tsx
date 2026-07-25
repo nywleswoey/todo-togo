@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useReducer, useRef, useState } from "react";
+import posthog from "posthog-js";
 import type { Todo } from "@/lib/types";
 import type { CaptureResponse } from "@/lib/capture-result";
 import { formatDue } from "@/lib/date";
@@ -102,11 +103,13 @@ export default function TodoScreen() {
   function keepDraft(id: string) {
     clearTimer(id);
     dispatchDraft({ type: "confirm", id });
+    posthog.capture("draft_kept");
   }
 
   function discardDraft(id: string) {
     clearTimer(id);
     dispatchDraft({ type: "discard", id });
+    posthog.capture("draft_discarded");
     void remove(id);
   }
 
@@ -121,7 +124,9 @@ export default function TodoScreen() {
     try {
       const todo = await createTodoApi({ title });
       setTodos((prev) => sortOpen([todo, ...prev]));
-    } catch {
+      posthog.capture("todo_created", { method: "text" });
+    } catch (err) {
+      posthog.captureException(err);
       await reload();
     }
   }
@@ -130,6 +135,7 @@ export default function TodoScreen() {
   function completeWithUndo(todo: Todo) {
     setTodos((prev) => prev.filter((t) => t.id !== todo.id));
     patchTodoApi(todo.id, { status: "done" }).catch(() => reload());
+    posthog.capture("todo_completed", { has_due_date: !!todo.dueDate });
     setToast({
       message: `Completed “${todo.title}”.`,
       variant: "info",
@@ -140,6 +146,7 @@ export default function TodoScreen() {
   function undoComplete(todo: Todo) {
     setTodos((prev) => sortOpen([{ ...todo, status: "open" }, ...prev]));
     patchTodoApi(todo.id, { status: "open" }).catch(() => reload());
+    posthog.capture("todo_completion_undone");
   }
 
   /** Resolve a chosen completion candidate to a todo and complete it. */
@@ -169,7 +176,9 @@ export default function TodoScreen() {
     );
     try {
       await patchTodoApi(id, { title, dueDate });
-    } catch {
+      posthog.capture("todo_edited", { has_due_date: !!dueDate });
+    } catch (err) {
+      posthog.captureException(err);
       await reload();
     }
   }
@@ -179,7 +188,9 @@ export default function TodoScreen() {
     setTodos((prev) => prev.filter((t) => t.id !== id));
     try {
       await deleteTodoApi(id);
-    } catch {
+      posthog.capture("todo_deleted");
+    } catch (err) {
+      posthog.captureException(err);
       await reload();
     }
   }
@@ -189,13 +200,16 @@ export default function TodoScreen() {
   function startRecording() {
     if (recPhase !== "idle") return;
     setToast(null);
+    posthog.capture("voice_recording_started");
     const rec = new VoiceRecorder({
       onLevel: setLevel,
       onComplete: async ({ blob }) => {
         setRecPhase("thinking");
         try {
           handleCaptureResponse(await uploadCapture(blob));
-        } catch {
+        } catch (err) {
+          posthog.captureException(err);
+          posthog.capture("voice_capture_failed", { reason: "upload_error" });
           setRecPhase("idle");
           setToast({
             message: "Didn't catch that.",
@@ -205,6 +219,7 @@ export default function TodoScreen() {
         }
       },
       onError: () => {
+        posthog.capture("voice_capture_failed", { reason: "recorder_error" });
         setRecPhase("idle");
         setToast({ message: "Didn't catch that.", variant: "warning" });
       },
@@ -214,6 +229,7 @@ export default function TodoScreen() {
       .start()
       .then(() => setRecPhase("recording"))
       .catch(() => {
+        posthog.capture("voice_capture_failed", { reason: "mic_unavailable" });
         setRecPhase("idle");
         setToast({
           message: "Microphone unavailable — check permissions.",
@@ -232,17 +248,27 @@ export default function TodoScreen() {
       setTodos((prev) => sortOpen([...res.created, ...prev]));
       dispatchDraft({ type: "captured", ids: res.created.map((t) => t.id) });
       res.created.forEach((t) => scheduleSelfConfirm(t.id));
+      posthog.capture("voice_capture_succeeded", {
+        intent: "capture",
+        todos_created: res.created.length,
+      });
     } else if (res.intent === "command") {
       const decision = decideCompletionUi(res.command?.candidates ?? []);
       if (decision.kind === "none") {
+        posthog.capture("voice_capture_failed", { reason: "no_match" });
         setToast({ message: "Couldn't find that todo.", variant: "warning" });
       } else {
+        posthog.capture("voice_capture_succeeded", {
+          intent: "command",
+          match_kind: decision.kind,
+        });
         setCompletion(decision);
       }
     } else {
+      posthog.capture("voice_capture_failed", { reason: "no_intent" });
       setToast({
         message: res.transcript
-          ? `Heard “${res.transcript}” — no task caught.`
+          ? `Heard "${res.transcript}" — no task caught.`
           : "Didn't catch that.",
         variant: "warning",
         action: { label: "Retry", onAction: startRecording },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { createTodo, listOpen } from "@/lib/todos";
+import { getPostHogClient, POSTHOG_DISTINCT_ID } from "@/lib/posthog-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -22,5 +23,14 @@ export async function POST(req: Request) {
     typeof body?.dueDate === "string" && body.dueDate ? body.dueDate : null;
   const id = typeof body?.id === "string" ? body.id : undefined;
   const todo = await createTodo(getDb(), { id, title, dueDate });
+
+  const posthog = getPostHogClient();
+  posthog.capture({
+    distinctId: POSTHOG_DISTINCT_ID,
+    event: "todo_created",
+    properties: { has_due_date: !!dueDate },
+  });
+  await posthog.shutdown();
+
   return NextResponse.json({ todo }, { status: 201 });
 }

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import posthog from "posthog-js";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,14 +22,18 @@ export default function LoginPage() {
         body: JSON.stringify({ pin }),
       });
       if (res.ok) {
+        posthog.identify("togo_user");
+        posthog.capture("login_succeeded");
         router.replace("/");
         router.refresh();
       } else {
         const body = await res.json().catch(() => ({}));
+        posthog.capture("login_failed", { reason: body.error ?? "Incorrect PIN" });
         setError(body.error ?? "Incorrect PIN");
         setPin("");
       }
-    } catch {
+    } catch (err) {
+      posthog.captureException(err);
       setError("Something went wrong. Try again.");
     } finally {
       setBusy(false);
