@@ -1,6 +1,8 @@
 import { after } from "next/server";
 import { PostHog } from "posthog-node";
 
+// Mirrored in src/lib/posthog-edge.ts, which cannot import from here without
+// pulling posthog-node into the Edge bundle. Change both together.
 const POSTHOG_DISTINCT_ID = "togo_user";
 
 /**

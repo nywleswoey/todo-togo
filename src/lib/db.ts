@@ -28,8 +28,11 @@ export function getDb(): Queryable {
   if (override) return override;
   if (!pool) {
     // Lazy import so tests that inject a db never touch the Neon driver / env.
+    // require (not dynamic import) keeps getDb synchronous for its many callers.
+    /* eslint-disable @typescript-eslint/no-require-imports */
     const { Pool } = require("@neondatabase/serverless") as typeof import("@neondatabase/serverless");
     const { config } = require("./config") as typeof import("./config");
+    /* eslint-enable @typescript-eslint/no-require-imports */
     const p = new Pool({ connectionString: config.databaseUrl });
     pool = {
       query: (text, params) => p.query(text, params as never) as never,
