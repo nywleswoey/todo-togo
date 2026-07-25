@@ -141,13 +141,15 @@ test("a 429 quota error is logged server-side and carried into the client except
 
   // Client side: the message PostHog captures names the quota failure instead
   // of a bare "capture_failed".
-  const clientError = await uploadCapture(clip()).catch((e: Error) => e);
+  const clientError = await uploadCapture(clip()).catch((e: unknown) => e);
+  expect(clientError).toBeInstanceOf(Error);
+  const clientMessage = (clientError as Error).message;
   // CAPTURE_ERROR_LOG=1 prints the exact message PostHog would capture.
   if (process.env.CAPTURE_ERROR_LOG) {
-    console.log("posthog.captureException message:", clientError.message);
+    console.log("posthog.captureException message:", clientMessage);
   }
-  expect(clientError.message).toMatch(/RESOURCE_EXHAUSTED/);
-  expect(clientError.message).toMatch(/limit: 0/);
+  expect(clientMessage).toMatch(/RESOURCE_EXHAUSTED/);
+  expect(clientMessage).toMatch(/limit: 0/);
 
   // A failed transcription still writes nothing.
   expect(await listOpen(getDb())).toEqual([]);
