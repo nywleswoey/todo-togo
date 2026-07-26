@@ -5,9 +5,9 @@ import { gunzipSync } from "node:zlib";
 import { makeTestDb, resetDb } from "../../../test/db";
 import type { IntentResult } from "@/lib/intent";
 
-// The Gemini seam is stubbed — the voice path is exercised without a model.
-vi.mock("@/lib/gemini", () => ({ interpretAudio: vi.fn() }));
-import { interpretAudio } from "@/lib/gemini";
+// The interpreter seam is stubbed — the voice path is exercised without a model.
+vi.mock("@/lib/interpreter", () => ({ interpretAudio: vi.fn() }));
+import { interpretAudio } from "@/lib/interpreter";
 
 /**
  * End-to-end check of the server-side PostHog instrumentation.

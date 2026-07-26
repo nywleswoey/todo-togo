@@ -30,7 +30,11 @@ export const config = {
   get appPin() {
     return required("APP_PIN");
   },
-  /** Model used for the voice capture call — see src/lib/gemini.ts. */
+  /** Voice-capture backend — see the registry in src/lib/interpreter.ts. */
+  get captureProvider() {
+    return optional("CAPTURE_PROVIDER", "gemini");
+  },
+  /** Model for the Gemini backend — see src/lib/interpreters/gemini.ts. */
   get geminiModel() {
     return optional("GEMINI_MODEL", "gemini-flash-lite-latest");
   },
