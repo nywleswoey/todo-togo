@@ -58,8 +58,13 @@ export async function uploadCapture(blob: Blob): Promise<CaptureResponse> {
   fd.append("audio", blob, "clip");
   const res = await fetch("/api/capture", { method: "POST", body: fd });
   if (!res.ok) {
-    // Transcription/interpretation failure — caller shows a Retry toast.
-    throw new Error("capture_failed");
+    // Transcription/interpretation failure — caller shows a Retry toast. Surface
+    // the server's `message` (the real Gemini error) so the exception captured
+    // in PostHog is diagnostic rather than a bare "capture_failed".
+    const body = await res.json().catch(() => ({}));
+    throw new Error(
+      `capture_failed (${res.status}): ${body.message ?? body.error ?? "unknown"}`,
+    );
   }
   return res.json() as Promise<CaptureResponse>;
 }
