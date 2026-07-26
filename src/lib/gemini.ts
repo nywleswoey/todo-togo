@@ -16,12 +16,13 @@ export interface InterpretInput {
   ctx: PromptContext;
 }
 
-// Gemini 2.5 Flash — multimodal (audio in), on the current free tier. The 429
-// RESOURCE_EXHAUSTED (limit: 0) that broke capture was a quota problem on the
-// key's Google project, not the model: it took a key from a project without
-// billing to get free-tier quota back. 2.5 is a thinking model, so the call
-// below disables thinking to keep 2.0-flash's latency on the voice path.
-const MODEL = "gemini-2.5-flash";
+// Latest Flash-Lite — multimodal (audio in), the roomiest free-tier daily quota
+// available (500 req/day vs ~20 for gemini-2.5-flash). The 429 RESOURCE_EXHAUSTED
+// (limit: 0) that broke capture was the model, not the key: gemini-2.0-flash is
+// retired from the free tier, while newer Flash/Flash-Lite models keep free quota
+// on the same project. Flash-Lite is a thinking model, so the call below disables
+// thinking to keep the voice path snappy.
+const MODEL = "gemini-flash-lite-latest";
 
 const INTENT_SCHEMA = {
   type: Type.OBJECT,

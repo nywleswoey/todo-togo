@@ -109,14 +109,14 @@ afterEach(() => {
   delete process.env.GEMINI_API_KEY;
 });
 
-test("the voice path calls gemini-2.5-flash with thinking disabled", async () => {
+test("the voice path calls gemini-flash-lite-latest with thinking disabled", async () => {
   stubFetch({ status: 200, body: MODEL_OK });
 
   const result = await uploadCapture(clip());
 
   // The model string that actually goes on the wire.
   expect(seen).toHaveLength(1);
-  expect(seen[0].url).toContain("models/gemini-2.5-flash:generateContent");
+  expect(seen[0].url).toContain("models/gemini-flash-lite-latest:generateContent");
   const cfg = seen[0].body.generationConfig as Record<string, unknown>;
   expect(cfg.thinkingConfig).toEqual({ thinkingBudget: 0 });
   expect(cfg.responseMimeType).toBe("application/json");
