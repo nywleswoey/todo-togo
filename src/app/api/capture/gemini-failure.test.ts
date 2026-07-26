@@ -112,7 +112,7 @@ afterEach(() => {
   delete process.env.GEMINI_MODEL;
 });
 
-test("the voice path calls the default Flash-Lite model with thinking disabled", async () => {
+test("the voice path calls the default Flash-Lite model at the minimum thinking level", async () => {
   stubFetch({ status: 200, body: MODEL_OK });
 
   const result = await uploadCapture(clip());
@@ -124,7 +124,10 @@ test("the voice path calls the default Flash-Lite model with thinking disabled",
     `models/${config.geminiModel}:generateContent`,
   );
   const cfg = seen[0].body.generationConfig as Record<string, unknown>;
-  expect(cfg.thinkingConfig).toEqual({ thinkingBudget: 0 });
+  // Never `thinkingBudget: 0` — gemini-flash-lite-latest now resolves to a
+  // thinking-required model that 400s on a zero budget, which killed every
+  // capture in production. MINIMAL is the accepted floor.
+  expect(cfg.thinkingConfig).toEqual({ thinkingLevel: "MINIMAL" });
   expect(cfg.responseMimeType).toBe("application/json");
   expect(cfg.responseSchema).toBeTruthy();
 

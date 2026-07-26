@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import { config } from "../config";
 import { buildPrompt } from "../prompt";
 import { parseIntent } from "../intent";
@@ -60,8 +60,10 @@ export const geminiInterpreter: AudioInterpreter = {
       // vs ~20 for gemini-2.5-flash); set GEMINI_MODEL to a concrete Flash-Lite
       // version to pin it when a silent alias rotation would be worse than falling
       // behind. See .env.example for what a 429 RESOURCE_EXHAUSTED here means.
-      // Flash-Lite is a thinking model, so thinking is disabled below to keep the
-      // voice path snappy.
+      // Flash-Lite is a thinking model and the alias now points at a version
+      // that *requires* thinking: `thinkingBudget: 0` is rejected outright with
+      // a 400 INVALID_ARGUMENT. The floor, MINIMAL, is what keeps the voice path
+      // snappy instead.
       model: config.geminiModel,
       contents: [
         {
@@ -73,7 +75,7 @@ export const geminiInterpreter: AudioInterpreter = {
         },
       ],
       config: {
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingLevel: ThinkingLevel.MINIMAL },
         responseMimeType: "application/json",
         responseSchema: INTENT_SCHEMA,
       },
