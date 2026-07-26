@@ -16,13 +16,6 @@ export interface InterpretInput {
   ctx: PromptContext;
 }
 
-// Gemini 2.5 Flash — multimodal (audio in), on the current free tier. The 429
-// RESOURCE_EXHAUSTED (limit: 0) that broke capture was a quota problem on the
-// key's Google project, not the model: it took a key from a project without
-// billing to get free-tier quota back. 2.5 is a thinking model, so the call
-// below disables thinking to keep 2.0-flash's latency on the voice path.
-const MODEL = "gemini-2.5-flash";
-
 const INTENT_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -69,7 +62,14 @@ export async function interpretAudio(
 ): Promise<IntentResult> {
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
   const response = await ai.models.generateContent({
-    model: MODEL,
+    // Defaults to the floating alias gemini-flash-lite-latest — multimodal
+    // (audio in) with the roomiest free-tier daily quota available (500 req/day
+    // vs ~20 for gemini-2.5-flash); set GEMINI_MODEL to a concrete Flash-Lite
+    // version to pin it when a silent alias rotation would be worse than falling
+    // behind. See .env.example for what a 429 RESOURCE_EXHAUSTED here means.
+    // Flash-Lite is a thinking model, so thinking is disabled below to keep the
+    // voice path snappy.
+    model: config.geminiModel,
     contents: [
       {
         role: "user",
