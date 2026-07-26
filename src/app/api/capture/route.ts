@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { config } from "@/lib/config";
 import { todayInTz } from "@/lib/date";
-import { interpretAudio } from "@/lib/gemini";
+import { interpretAudio } from "@/lib/interpreter";
 import { processCapture } from "@/lib/capture";
 import { listOpen } from "@/lib/todos";
 import { captureServerEvent } from "@/lib/posthog-server";
@@ -13,9 +13,9 @@ export const runtime = "nodejs";
 /**
  * POST /api/capture — the whole server voice path.
  *
- * multipart audio in → read current open todos → single Gemini call
- * (transcribe + interpret) → apply (insert captures / resolve completion
- * candidates / unknown) → applied result out.
+ * multipart audio in → read current open todos → single interpreter call
+ * (transcribe + interpret, provider chosen by CAPTURE_PROVIDER) → apply (insert
+ * captures / resolve completion candidates / unknown) → applied result out.
  */
 export async function POST(req: Request) {
   const form = await req.formData().catch(() => null);

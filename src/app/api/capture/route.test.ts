@@ -4,9 +4,9 @@ import { createTodo, listOpen } from "@/lib/todos";
 import { getDb } from "@/lib/db";
 import type { IntentResult } from "@/lib/intent";
 
-// The Gemini seam is stubbed — the whole server path is exercised without a model.
-vi.mock("@/lib/gemini", () => ({ interpretAudio: vi.fn() }));
-import { interpretAudio } from "@/lib/gemini";
+// The interpreter seam is stubbed — the whole server path is exercised without a model.
+vi.mock("@/lib/interpreter", () => ({ interpretAudio: vi.fn() }));
+import { interpretAudio } from "@/lib/interpreter";
 import { POST } from "./route";
 
 const mockInterpret = vi.mocked(interpretAudio);
