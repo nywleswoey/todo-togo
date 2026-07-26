@@ -3,6 +3,7 @@ import { makeTestDb, resetDb } from "../../../../test/db";
 import { listOpen } from "@/lib/todos";
 import { getDb } from "@/lib/db";
 import { uploadCapture } from "@/lib/api";
+import { config } from "@/lib/config";
 import { POST } from "./route";
 
 /**
@@ -101,22 +102,27 @@ beforeEach(async () => {
   await makeTestDb();
   seen.length = 0;
   process.env.GEMINI_API_KEY = "test-key";
+  delete process.env.GEMINI_MODEL;
 });
 
 afterEach(() => {
   resetDb();
   vi.unstubAllGlobals();
   delete process.env.GEMINI_API_KEY;
+  delete process.env.GEMINI_MODEL;
 });
 
-test("the voice path calls gemini-flash-lite-latest with thinking disabled", async () => {
+test("the voice path calls the default Flash-Lite model with thinking disabled", async () => {
   stubFetch({ status: 200, body: MODEL_OK });
 
   const result = await uploadCapture(clip());
 
-  // The model string that actually goes on the wire.
+  // With GEMINI_MODEL unset, the default alias is the model on the wire.
+  expect(config.geminiModel).toBe("gemini-flash-lite-latest");
   expect(seen).toHaveLength(1);
-  expect(seen[0].url).toContain("models/gemini-flash-lite-latest:generateContent");
+  expect(seen[0].url).toContain(
+    `models/${config.geminiModel}:generateContent`,
+  );
   const cfg = seen[0].body.generationConfig as Record<string, unknown>;
   expect(cfg.thinkingConfig).toEqual({ thinkingBudget: 0 });
   expect(cfg.responseMimeType).toBe("application/json");
@@ -125,6 +131,18 @@ test("the voice path calls gemini-flash-lite-latest with thinking disabled", asy
   // …and the capture still lands end-to-end on the new model.
   expect(result.intent).toBe("capture");
   expect((await listOpen(getDb())).map((t) => t.title)).toEqual(["buy milk"]);
+});
+
+test("GEMINI_MODEL pins the model that goes on the wire", async () => {
+  process.env.GEMINI_MODEL = "gemini-flash-lite-latest-pinned";
+  stubFetch({ status: 200, body: MODEL_OK });
+
+  await uploadCapture(clip());
+
+  expect(seen).toHaveLength(1);
+  expect(seen[0].url).toContain(
+    "models/gemini-flash-lite-latest-pinned:generateContent",
+  );
 });
 
 test("a 429 quota error is logged server-side and carried into the client exception", async () => {

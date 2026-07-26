@@ -29,6 +29,10 @@ export const config = {
   get appPin() {
     return required("APP_PIN");
   },
+  /** Model used for the voice capture call — see src/lib/gemini.ts. */
+  get geminiModel() {
+    return optional("GEMINI_MODEL", "gemini-flash-lite-latest");
+  },
   /** Timezone used to resolve spoken relative dates to an absolute date. */
   get serverTz() {
     return optional("SERVER_TZ", "America/New_York");
