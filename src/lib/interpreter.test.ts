@@ -1,9 +1,19 @@
-import { afterEach, expect, test } from "vitest";
+import { afterEach, beforeEach, expect, test } from "vitest";
 import { getInterpreter } from "./interpreter";
 import { geminiInterpreter } from "./interpreters/gemini";
 
-afterEach(() => {
+const ambientProvider = process.env.CAPTURE_PROVIDER;
+
+beforeEach(() => {
   delete process.env.CAPTURE_PROVIDER;
+});
+
+afterEach(() => {
+  if (ambientProvider === undefined) {
+    delete process.env.CAPTURE_PROVIDER;
+  } else {
+    process.env.CAPTURE_PROVIDER = ambientProvider;
+  }
 });
 
 test("defaults to the Gemini backend when CAPTURE_PROVIDER is unset", () => {
