@@ -6,9 +6,10 @@ import { geminiInterpreter } from "./interpreters/gemini";
 
 /**
  * The audio→intent seam, as a swappable adapter. The capture route depends only
- * on this contract, never on a concrete provider — so switching to a different
- * transcription/interpretation backend (a different model, a different vendor,
- * or a stub) is a `CAPTURE_PROVIDER` change, not a code change.
+ * on this contract, never on a concrete provider — so once a second backend (a
+ * different model, a different vendor, or a stub) is registered below, switching
+ * to it is a `CAPTURE_PROVIDER` change rather than a route change. Gemini is the
+ * only provider registered today.
  *
  * Tests mock this module; everything above it (the route, the apply logic) is
  * exercised without a live model.
