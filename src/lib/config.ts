@@ -16,7 +16,8 @@ function required(name: string): string {
 }
 
 function optional(name: string, fallback: string): string {
-  return process.env[name] ?? fallback;
+  const value = process.env[name];
+  return value && value.trim() ? value.trim() : fallback;
 }
 
 export const config = {

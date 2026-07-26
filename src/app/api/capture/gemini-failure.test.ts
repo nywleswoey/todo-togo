@@ -145,6 +145,16 @@ test("GEMINI_MODEL pins the model that goes on the wire", async () => {
   );
 });
 
+test("a blank GEMINI_MODEL falls back to the default instead of models/:generateContent", async () => {
+  process.env.GEMINI_MODEL = "   ";
+  stubFetch({ status: 200, body: MODEL_OK });
+
+  await uploadCapture(clip());
+
+  expect(seen).toHaveLength(1);
+  expect(seen[0].url).toContain("models/gemini-flash-lite-latest:generateContent");
+});
+
 test("a 429 quota error is logged server-side and carried into the client exception", async () => {
   stubFetch({ status: 429, body: QUOTA_429 });
   const logged = vi.spyOn(console, "error");

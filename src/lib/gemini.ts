@@ -16,16 +16,6 @@ export interface InterpretInput {
   ctx: PromptContext;
 }
 
-// The model is config.geminiModel (GEMINI_MODEL). The default is the floating
-// alias gemini-flash-lite-latest — multimodal (audio in) with the roomiest
-// free-tier daily quota available (500 req/day vs ~20 for gemini-2.5-flash);
-// set GEMINI_MODEL to a concrete Flash-Lite version to pin it when a silent
-// alias rotation would be worse than falling behind. The 429 RESOURCE_EXHAUSTED
-// (limit: 0) that broke capture was the model, not the key: gemini-2.0-flash is
-// retired from the free tier, while newer Flash/Flash-Lite models keep free quota
-// on the same project. Flash-Lite is a thinking model, so the call below disables
-// thinking to keep the voice path snappy.
-
 const INTENT_SCHEMA = {
   type: Type.OBJECT,
   properties: {
@@ -72,6 +62,15 @@ export async function interpretAudio(
 ): Promise<IntentResult> {
   const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
   const response = await ai.models.generateContent({
+    // Defaults to the floating alias gemini-flash-lite-latest — multimodal
+    // (audio in) with the roomiest free-tier daily quota available (500 req/day
+    // vs ~20 for gemini-2.5-flash); set GEMINI_MODEL to a concrete Flash-Lite
+    // version to pin it when a silent alias rotation would be worse than falling
+    // behind. The 429 RESOURCE_EXHAUSTED (limit: 0) that broke capture was the
+    // model, not the key: gemini-2.0-flash is retired from the free tier, while
+    // newer Flash/Flash-Lite models keep free quota on the same project.
+    // Flash-Lite is a thinking model, so thinking is disabled below to keep the
+    // voice path snappy.
     model: config.geminiModel,
     contents: [
       {
