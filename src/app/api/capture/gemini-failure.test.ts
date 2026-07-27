@@ -103,6 +103,7 @@ beforeEach(async () => {
   seen.length = 0;
   process.env.GEMINI_API_KEY = "test-key";
   delete process.env.GEMINI_MODEL;
+  delete process.env.GEMINI_THINKING_LEVEL;
 });
 
 afterEach(() => {
@@ -110,6 +111,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
   delete process.env.GEMINI_API_KEY;
   delete process.env.GEMINI_MODEL;
+  delete process.env.GEMINI_THINKING_LEVEL;
 });
 
 test("the voice path calls the default Flash-Lite model at the minimum thinking level", async () => {
@@ -117,7 +119,8 @@ test("the voice path calls the default Flash-Lite model at the minimum thinking 
 
   const result = await uploadCapture(clip());
 
-  // With GEMINI_MODEL unset, the default alias is the model on the wire.
+  // With GEMINI_MODEL and GEMINI_THINKING_LEVEL unset, the defaults are what
+  // goes on the wire.
   expect(config.geminiModel).toBe("gemini-flash-lite-latest");
   expect(seen).toHaveLength(1);
   expect(seen[0].url).toContain(
@@ -156,6 +159,47 @@ test("a blank GEMINI_MODEL falls back to the default instead of models/:generate
 
   expect(seen).toHaveLength(1);
   expect(seen[0].url).toContain("models/gemini-flash-lite-latest:generateContent");
+});
+
+test("GEMINI_THINKING_LEVEL pins the thinking level that goes on the wire", async () => {
+  // The escape hatch for a pinned model whose supported levels start at low.
+  process.env.GEMINI_THINKING_LEVEL = "low";
+  stubFetch({ status: 200, body: MODEL_OK });
+
+  await uploadCapture(clip());
+
+  expect(seen).toHaveLength(1);
+  const cfg = seen[0].body.generationConfig as Record<string, unknown>;
+  expect(cfg.thinkingConfig).toEqual({ thinkingLevel: "LOW" });
+});
+
+test("a blank GEMINI_THINKING_LEVEL falls back to the MINIMAL default", async () => {
+  process.env.GEMINI_THINKING_LEVEL = "   ";
+  stubFetch({ status: 200, body: MODEL_OK });
+
+  await uploadCapture(clip());
+
+  expect(seen).toHaveLength(1);
+  const cfg = seen[0].body.generationConfig as Record<string, unknown>;
+  expect(cfg.thinkingConfig).toEqual({ thinkingLevel: "MINIMAL" });
+});
+
+test("an unsupported GEMINI_THINKING_LEVEL fails before anything reaches Google", async () => {
+  process.env.GEMINI_THINKING_LEVEL = "none";
+  stubFetch({ status: 200, body: MODEL_OK });
+  const logged = vi.spyOn(console, "error").mockImplementation(() => {});
+
+  await expect(uploadCapture(clip())).rejects.toThrow(/capture_failed \(502\)/);
+
+  // No request at all — the typo is caught here, not as an opaque 400 from Google.
+  expect(seen).toHaveLength(0);
+  const [, err] = logged.mock.calls[0];
+  expect(String((err as Error).message)).toMatch(
+    /Invalid GEMINI_THINKING_LEVEL: none/,
+  );
+  expect(await listOpen(getDb())).toEqual([]);
+
+  logged.mockRestore();
 });
 
 test("a 429 quota error is logged server-side and carried into the client exception", async () => {
