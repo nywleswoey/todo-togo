@@ -38,6 +38,13 @@ export const config = {
   get geminiModel() {
     return optional("GEMINI_MODEL", "gemini-flash-lite-latest");
   },
+  /**
+   * How hard the Gemini backend is allowed to think. Validated against the SDK
+   * enum where it is used — see src/lib/interpreters/gemini.ts.
+   */
+  get geminiThinkingLevel() {
+    return optional("GEMINI_THINKING_LEVEL", "MINIMAL");
+  },
   /** Timezone used to resolve spoken relative dates to an absolute date. */
   get serverTz() {
     return optional("SERVER_TZ", "America/New_York");

@@ -1,5 +1,5 @@
 import "server-only";
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI, ThinkingLevel, Type } from "@google/genai";
 import { config } from "../config";
 import { buildPrompt } from "../prompt";
 import { parseIntent } from "../intent";
@@ -51,6 +51,26 @@ const INTENT_SCHEMA = {
   required: ["intent", "transcript"],
 };
 
+/** The levels an operator may ask for — UNSPECIFIED is a placeholder, not a setting. */
+const THINKING_LEVELS = Object.values(ThinkingLevel).filter(
+  (level) => level !== ThinkingLevel.THINKING_LEVEL_UNSPECIFIED,
+);
+
+/**
+ * GEMINI_THINKING_LEVEL, resolved against the SDK enum so a typo fails here
+ * naming the accepted values instead of as an opaque 400 from Google.
+ */
+function thinkingLevel(): ThinkingLevel {
+  const raw = config.geminiThinkingLevel;
+  const level = THINKING_LEVELS.find((l) => l === raw.toUpperCase());
+  if (!level) {
+    throw new Error(
+      `Invalid GEMINI_THINKING_LEVEL: ${raw} (expected one of ${THINKING_LEVELS.join(", ")})`,
+    );
+  }
+  return level;
+}
+
 export const geminiInterpreter: AudioInterpreter = {
   async interpret(input: InterpretInput) {
     const ai = new GoogleGenAI({ apiKey: config.geminiApiKey });
@@ -60,8 +80,6 @@ export const geminiInterpreter: AudioInterpreter = {
       // vs ~20 for gemini-2.5-flash); set GEMINI_MODEL to a concrete Flash-Lite
       // version to pin it when a silent alias rotation would be worse than falling
       // behind. See .env.example for what a 429 RESOURCE_EXHAUSTED here means.
-      // Flash-Lite is a thinking model, so thinking is disabled below to keep the
-      // voice path snappy.
       model: config.geminiModel,
       contents: [
         {
@@ -73,7 +91,12 @@ export const geminiInterpreter: AudioInterpreter = {
         },
       ],
       config: {
-        thinkingConfig: { thinkingBudget: 0 },
+        // Flash-Lite is a thinking model and the alias now points at a version
+        // that *requires* thinking: `thinkingBudget: 0` is rejected outright with
+        // a 400 INVALID_ARGUMENT. The floor, MINIMAL, is what keeps the voice path
+        // snappy instead; GEMINI_THINKING_LEVEL raises it for a pinned model whose
+        // supported levels start at low.
+        thinkingConfig: { thinkingLevel: thinkingLevel() },
         responseMimeType: "application/json",
         responseSchema: INTENT_SCHEMA,
       },
