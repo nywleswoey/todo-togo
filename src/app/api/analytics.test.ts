@@ -91,7 +91,11 @@ afterEach(() => resetDb());
 
 /** posthog-node flushes on a shutdown promise the route intentionally does not await. */
 async function settle(count: number): Promise<Ingested[]> {
-  const deadline = Date.now() + 5000;
+  // Generous because the whole suite competes for CPU; a healthy flush lands in
+  // milliseconds, so this only costs wall-clock when something is genuinely
+  // broken. Stays under vitest's testTimeout so a real failure surfaces here,
+  // with the event count, rather than as an opaque test timeout.
+  const deadline = Date.now() + 15_000;
   while (ingested.length < count && Date.now() < deadline) {
     await new Promise((r) => setTimeout(r, 25));
   }
@@ -124,13 +128,24 @@ test("todo create / status change / delete each ship an event to PostHog", async
   });
 
   const events = await settle(3);
-  expect(events.map((e) => e.event)).toEqual([
+  // The route fires PostHog's flush without awaiting it, so the three batch
+  // posts are in flight concurrently and can land in any order. Assert on the
+  // set of events keyed by name rather than on arrival position.
+  expect(events).toHaveLength(3);
+  const byName = new Map(events.map((e) => [e.event, e]));
+  expect([...byName.keys()].sort()).toEqual([
     "todo_created",
-    "todo_status_changed",
     "todo_deleted",
+    "todo_status_changed",
   ]);
-  expect(events[0].properties).toMatchObject({ method: "text", has_due_date: true });
-  expect(events[1].properties).toMatchObject({ status: "done", has_due_date: true });
+  expect(byName.get("todo_created")?.properties).toMatchObject({
+    method: "text",
+    has_due_date: true,
+  });
+  expect(byName.get("todo_status_changed")?.properties).toMatchObject({
+    status: "done",
+    has_due_date: true,
+  });
   // Every event lands on the batch endpoint of the configured project.
   expect(events.every((e) => e.apiKey === TOKEN)).toBe(true);
   expect(events.every((e) => e.distinctId === "togo_user")).toBe(true);
