@@ -64,8 +64,13 @@ function Waveform({ level }: { level: number }) {
   const [bars, setBars] = useState<number[]>(() =>
     new Array(BAR_COUNT).fill(0.05),
   );
+  // Kept in a ref so the interval below reads the newest level without being
+  // torn down and recreated on every level change. Written in an effect rather
+  // than during render: refs must not be mutated while rendering.
   const levelRef = useRef(level);
-  levelRef.current = level;
+  useEffect(() => {
+    levelRef.current = level;
+  }, [level]);
 
   useEffect(() => {
     const id = setInterval(() => {
